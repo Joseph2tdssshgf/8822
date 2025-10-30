@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import FeatureCard from '../components/FeatureCard';
 import { generateVideo, pollVideoOperation } from '../services/geminiService';
 import Spinner from '../components/Spinner';
 import type { VideosOperation, GenerateVideosResponse } from '@google/genai';
-import ApiKeySelector from '../components/ApiKeySelector';
-
 
 const aspectRatios = ["16:9", "9:16"];
 const resolutions = ["720p", "1080p"];
@@ -17,31 +16,6 @@ const VideoGeneration: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
-    // Fix: Add state to manage API key selection flow for Veo model.
-    const [hasApiKey, setHasApiKey] = useState<boolean>(false);
-    const [isCheckingApiKey, setIsCheckingApiKey] = useState<boolean>(true);
-
-    useEffect(() => {
-        const checkApiKey = async () => {
-            if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-                try {
-                    const keySelected = await window.aistudio.hasSelectedApiKey();
-                    setHasApiKey(keySelected);
-                } catch (e) {
-                    console.error("Error checking for API key:", e);
-                    setHasApiKey(false);
-                }
-            } else {
-                setHasApiKey(false);
-            }
-            setIsCheckingApiKey(false);
-        };
-        checkApiKey();
-    }, []);
-
-    const handleKeySelected = () => {
-        setHasApiKey(true);
-    };
 
     const handleSubmit = async () => {
         if (!prompt || isLoading) return;
@@ -62,48 +36,23 @@ const VideoGeneration: React.FC = () => {
             setLoadingMessage('Fetching video data...');
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
             if (downloadLink) {
-                 // The API key is appended for authentication from the environment
-                const videoUrlWithKey = `${downloadLink}&key=${process.env.API_KEY}`;
+                const apiKey = sessionStorage.getItem('gemini-api-key');
+                if (!apiKey) {
+                    throw new Error("API key not found in session storage. Please refresh and set your API key.");
+                }
+                const videoUrlWithKey = `${downloadLink}&key=${apiKey}`;
                 setGeneratedVideoUrl(videoUrlWithKey);
             } else {
                 throw new Error('Video generation finished, but no download link was provided.');
             }
 
         } catch (e: any) {
-            // Fix: Handle API key errors and prompt user to re-select.
-            if (e.message?.includes('Requested entity was not found.')) {
-                setError('API Key validation failed. Please select your API key again.');
-                setHasApiKey(false);
-            } else {
-                setError(e.message || 'An error occurred during video generation.');
-            }
+            setError(e.message || 'An error occurred during video generation.');
         } finally {
             setIsLoading(false);
             setLoadingMessage('');
         }
     };
-
-    // Fix: Show loading indicator while checking for API key.
-    if (isCheckingApiKey) {
-        return (
-            <FeatureCard title="Video Generation" description="Create stunning videos from text prompts using the Veo model.">
-                <div className="flex items-center justify-center p-8">
-                    <Spinner />
-                    <p className="ml-4 text-gray-300">Checking API key status...</p>
-                </div>
-            </FeatureCard>
-        );
-    }
-    
-    // Fix: Show API key selector if no key is selected.
-    if (!hasApiKey) {
-        return (
-             <FeatureCard title="Video Generation" description="Create stunning videos from text prompts using the Veo model.">
-                <ApiKeySelector onKeySelected={handleKeySelected} />
-            </FeatureCard>
-        );
-    }
-
 
     return (
         <FeatureCard

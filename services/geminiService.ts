@@ -1,8 +1,14 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality, VideosOperation, GenerateVideosResponse, LiveSession, LiveServerMessage, Blob } from '@google/genai';
 
-// IMPORTANT: This assumes process.env.API_KEY is available in the environment.
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// IMPORTANT: This now uses sessionStorage to get the API key set by the user.
+const getAI = () => {
+    const apiKey = sessionStorage.getItem('gemini-api-key');
+    if (!apiKey) {
+        throw new Error("API Key not found. Please provide your API key to use the application.");
+    }
+    return new GoogleGenAI({ apiKey });
+};
 
 // Text Generation
 export const generateText = async (prompt: string): Promise<string> => {
@@ -130,6 +136,26 @@ export const generateWithSearch = async (prompt: string) => {
         contents: prompt,
         config: {
             tools: [{ googleSearch: {} }],
+        },
+    });
+};
+
+// Maps Grounding
+export const generateWithMaps = async (prompt: string, latitude: number, longitude: number) => {
+    const ai = getAI();
+    return ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            tools: [{ googleMaps: {} }],
+            toolConfig: {
+                retrievalConfig: {
+                    latLng: {
+                        latitude,
+                        longitude,
+                    }
+                }
+            }
         },
     });
 };

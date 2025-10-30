@@ -2,6 +2,7 @@
   "name": "Gemini AI Showcase",
   "description": "An all-in-one application demonstrating a wide range of capabilities of the Gemini API, including text and image generation, streaming, chat, video creation, and real-time voice conversations.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "geolocation"
   ]
 }
