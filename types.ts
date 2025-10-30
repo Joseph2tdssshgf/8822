@@ -1,3 +1,4 @@
+
 export enum Feature {
   Text = 'Text Generation',
   StreamingText = 'Streaming Text',
@@ -21,13 +22,11 @@ export interface GroundingSource {
 
 // Fix: Moved from ApiKeySelector.tsx to provide a single, global definition for the aistudio object
 // and avoid conflicting global declarations.
-interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-}
-
 declare global {
     interface Window {
-        aistudio: AIStudio;
+        aistudio: {
+            hasSelectedApiKey: () => Promise<boolean>;
+            openSelectKey: () => Promise<void>;
+        };
     }
 }

@@ -1,17 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import FeatureCard from '../components/FeatureCard';
-import ApiKeySelector from '../components/ApiKeySelector';
 import { generateVideo, pollVideoOperation } from '../services/geminiService';
 import Spinner from '../components/Spinner';
 import type { VideosOperation, GenerateVideosResponse } from '@google/genai';
+import ApiKeySelector from '../components/ApiKeySelector';
 
 
 const aspectRatios = ["16:9", "9:16"];
 const resolutions = ["720p", "1080p"];
 
 const VideoGeneration: React.FC = () => {
-    const [apiKeySelected, setApiKeySelected] = useState(false);
     const [prompt, setPrompt] = useState<string>('A cinematic shot of a futuristic city at sunset, with flying cars.');
     const [aspectRatio, setAspectRatio] = useState<string>('16:9');
     const [resolution, setResolution] = useState<string>('720p');
@@ -19,22 +17,31 @@ const VideoGeneration: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
+    // Fix: Add state to manage API key selection flow for Veo model.
+    const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+    const [isCheckingApiKey, setIsCheckingApiKey] = useState<boolean>(true);
 
     useEffect(() => {
         const checkApiKey = async () => {
             if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-                const hasKey = await window.aistudio.hasSelectedApiKey();
-                setApiKeySelected(hasKey);
+                try {
+                    const keySelected = await window.aistudio.hasSelectedApiKey();
+                    setHasApiKey(keySelected);
+                } catch (e) {
+                    console.error("Error checking for API key:", e);
+                    setHasApiKey(false);
+                }
+            } else {
+                setHasApiKey(false);
             }
+            setIsCheckingApiKey(false);
         };
         checkApiKey();
     }, []);
 
-    const resetToSelectKey = () => {
-        setApiKeySelected(false);
-        setIsLoading(false);
-        setLoadingMessage('');
-    }
+    const handleKeySelected = () => {
+        setHasApiKey(true);
+    };
 
     const handleSubmit = async () => {
         if (!prompt || isLoading) return;
@@ -55,7 +62,7 @@ const VideoGeneration: React.FC = () => {
             setLoadingMessage('Fetching video data...');
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
             if (downloadLink) {
-                 // The API key is appended for authentication
+                 // The API key is appended for authentication from the environment
                 const videoUrlWithKey = `${downloadLink}&key=${process.env.API_KEY}`;
                 setGeneratedVideoUrl(videoUrlWithKey);
             } else {
@@ -63,9 +70,10 @@ const VideoGeneration: React.FC = () => {
             }
 
         } catch (e: any) {
-             if(e.message?.includes('Requested entity was not found')) {
-                setError("API Key not found or invalid. Please select a valid key.");
-                resetToSelectKey();
+            // Fix: Handle API key errors and prompt user to re-select.
+            if (e.message?.includes('Requested entity was not found.')) {
+                setError('API Key validation failed. Please select your API key again.');
+                setHasApiKey(false);
             } else {
                 setError(e.message || 'An error occurred during video generation.');
             }
@@ -74,14 +82,28 @@ const VideoGeneration: React.FC = () => {
             setLoadingMessage('');
         }
     };
-    
-    if (!apiKeySelected) {
+
+    // Fix: Show loading indicator while checking for API key.
+    if (isCheckingApiKey) {
         return (
-             <FeatureCard title="Video Generation" description="Create stunning videos from text prompts using the Veo model.">
-                 <ApiKeySelector onKeySelected={() => setApiKeySelected(true)} />
+            <FeatureCard title="Video Generation" description="Create stunning videos from text prompts using the Veo model.">
+                <div className="flex items-center justify-center p-8">
+                    <Spinner />
+                    <p className="ml-4 text-gray-300">Checking API key status...</p>
+                </div>
             </FeatureCard>
         );
     }
+    
+    // Fix: Show API key selector if no key is selected.
+    if (!hasApiKey) {
+        return (
+             <FeatureCard title="Video Generation" description="Create stunning videos from text prompts using the Veo model.">
+                <ApiKeySelector onKeySelected={handleKeySelected} />
+            </FeatureCard>
+        );
+    }
+
 
     return (
         <FeatureCard
