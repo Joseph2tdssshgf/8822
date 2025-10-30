@@ -4,18 +4,6 @@ interface ApiKeySelectorProps {
     onKeySelected: () => void;
 }
 
-// Fix: Define an interface for the aistudio object to avoid conflicting global declarations.
-interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-}
-
-declare global {
-    interface Window {
-        aistudio: AIStudio;
-    }
-}
-
 const ApiKeySelector: React.FC<ApiKeySelectorProps> = ({ onKeySelected }) => {
     const handleSelectKey = async () => {
         if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
